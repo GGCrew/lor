@@ -1,7 +1,15 @@
 !!! XML
-%sequence{saveFileVersion: 14, author: '', createdAt: '3/10/2017 11:49:44 PM', videoUsage: 2}
+%sequence{saveFileVersion: 14, author: '', createdAt: DateTime.now.strftime('%-m/%e/%Y %I:%M:%S %p'), videoUsage: 2}
 	%channels
-		%channel
+		- @sequence[:channels].each_with_index do |channel, index|
+			-channel[:pixel_channels].each do |pixel_channel|
+				-if pixel_channel[:effects]
+					%channel{ pixel_channel[:attributes] }
+						-pixel_channel[:effects].each do |effect|
+							%effect{ effect[:attributes] }				
+				-else
+					%channel{ pixel_channel[:attributes] }/
+			%rgbChannel{ channel[:rgbChannel][:attributes] }
 
 	%timingGrids
 		%timingGrid

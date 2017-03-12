@@ -114,7 +114,7 @@ class SequenceController < ApplicationController
 =end
 =begin
 			{
-				channels: [
+				pixel_channels: [
 					{
 						attributes: {name: '', color: '', centiseconds: '', deviceType: '', unit: '', circuit: '', savedIndex:''},
 						effects: [
@@ -138,13 +138,16 @@ class SequenceController < ApplicationController
 			
 			(1..50).each do |pixel_index|
 				color_indices = []
+				color_channels = []
+				channel_name = "CCR #{ccr[:unit]} p#{pixel_index}"
 				(0..2).each do |color_index|
 					#color = (2**(8*(color_index+1))) - (2**(8*color_index))
 					color = COLORS[color_index]
-				
+					color_indices << current_index
+
 					# RGB channels
 					attributes = {}
-					attributes.merge!({name: "CCR #{ccr[:unit]} p#{pixel_index} (#{color[:initial]})"})
+					attributes.merge!({name: "#{channel_name} (#{color[:initial]})"})
 					attributes.merge!({color: color[:value]})
 					attributes.merge!({centiseconds: CENTISECONDS})
 					attributes.merge!({deviceType: 'LOR'})
@@ -170,10 +173,24 @@ class SequenceController < ApplicationController
 						effects = nil
 					end
 
+					color_channels << { attributes: attributes, effects: effects }
 					current_index += 1
-				end
-			end
+				end					
 
+				rgb_attributes = {
+					totalCentiseconds: CENTISECONDS,
+					name: channel_name,
+					savedIndex: current_index
+				}
+				rgb_channels = []
+				
+				current_index += 1
+
+				channels << {
+					pixel_channels: color_channels,
+					rgbChannel: { attributes: rgb_attributes, channels: rgb_channels }
+				}
+			end
 
 =begin
 			<channel name="CCD 21 - LR" color="12615744" centiseconds="400" deviceType="LOR" unit="33" circuit="151" priority="67108864" savedIndex="200"/>
