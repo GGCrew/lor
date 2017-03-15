@@ -25,8 +25,6 @@ class SequenceController < ApplicationController
 		{ name: 'blue',  initial: 'B', value: 16711680 }
 	]
 
-	CENTISECONDS = 400
-	CENTISECONDINTERVAL = 10
 
 =begin
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -96,50 +94,21 @@ class SequenceController < ApplicationController
 
 
 	def index
-		channels = []
+		current_index = 0
+
+		devices = []
 		CCRS.each do |ccr|
-=begin
-			<channel name="CCD 21 p50 - 18 (R)" color="255" centiseconds="400" deviceType="LOR" unit="33" circuit="148" savedIndex="0"/>
-			<channel name="CCD 21 p50 - 18 (G)" color="65280" centiseconds="400" deviceType="LOR" unit="33" circuit="149" savedIndex="1">
-				<effect type="intensity" startCentisecond="0" endCentisecond="400" intensity="50"/>
-			</channel>
-			<channel name="CCD 21 p50 - 18 (B)" color="16711680" centiseconds="400" deviceType="LOR" unit="33" circuit="150" savedIndex="2"/>
-			<rgbChannel totalCentiseconds="400" name="CCD 21 p50 - 18" savedIndex="3">
-				<channels>
-					<channel savedIndex="0"/>
-					<channel savedIndex="1"/>
-					<channel savedIndex="2"/>
-				</channels>
-			</rgbChannel>
-=end
-=begin
-			{
-				pixel_channels: [
-					{
-						attributes: {name: '', color: '', centiseconds: '', deviceType: '', unit: '', circuit: '', savedIndex:''},
-						effects: [
-							{
-								attributes: {type: '', startCentisecond: '', endCentisecond: '', startIntensity: '', endIntensity: ''}
-							}
-						]
-					}
-				],
-				rgbChannel: {
-					attributes: {totalCentiseconds: '', name: '', savedIndex: ''},
-					channels: [
-						{
-							attributes: {savedIndex: ''}
-						}
-					]
-				}
-			}
-=end
-			current_index = 0
-			
+			device = {}
+
+			unit_decimal = ccr[:unit].to_s.to_i(16) # convert from hex to decimal
+			unit_name = "CCR #{ccr[:unit]}"
+
+			pixels = []
 			(1..50).each do |pixel_index|
+				pixel_name = "#{unit_name} p#{pixel_index}"
+
 				color_indices = []
-				color_channels = []
-				channel_name = "CCR #{ccr[:unit]} p#{pixel_index}"
+				colors = []
 				(0..2).each do |color_index|
 					#color = (2**(8*(color_index+1))) - (2**(8*color_index))
 					color = COLORS[color_index]
@@ -147,48 +116,53 @@ class SequenceController < ApplicationController
 
 					# RGB channels
 					attributes = {}
-					attributes.merge!({name: "#{channel_name} (#{color[:initial]})"})
+					attributes.merge!({name: "#{pixel_name} (#{color[:initial]})"})
 					attributes.merge!({color: color[:value]})
 					attributes.merge!({centiseconds: CENTISECONDS})
 					attributes.merge!({deviceType: 'LOR'})
-					attributes.merge!({unit: ccr[:unit].to_s.to_i(16)}) # convert from hex to decimal
+					attributes.merge!({unit: unit_decimal})
 					attributes.merge!({circuit: (((pixel_index - 1) * 4) + color_index)})
 					attributes.merge!({savedIndex: current_index})
 
-					if color_index == 1 # green
-						effects = []
-						(0..(CENTISECONDS - CENTISECONDINTERVAL)).step(CENTISECONDINTERVAL) do |centisecond|
-							# TODO: generate random intensity values
-							effects << {
-								attributes: {
-									type: 'intensity',
-									startCentisecond: centisecond,
-									endCentisecond: (centisecond + CENTISECONDINTERVAL),
-									startIntensity: 1,
-									endIntensity: 50
-								}
-							}
-						end
-					else
+					if ccr[:inactive].include?(pixel_index)
 						effects = nil
+					else
+						if color_index == 1 # green
+							effects = []
+							(0..(CENTISECONDS - CENTISECONDINTERVAL)).step(CENTISECONDINTERVAL) do |centisecond|
+								# TODO: generate random intensity values
+								effects << {
+									attributes: {
+										type: 'intensity',
+										startCentisecond: centisecond,
+										endCentisecond: (centisecond + CENTISECONDINTERVAL),
+										startIntensity: 1,
+										endIntensity: 50
+									}
+								}
+							end
+						else
+							effects = nil
+						end
 					end
 
-					color_channels << { attributes: attributes, effects: effects }
+					colors << { attributes: attributes, effects: effects }
+
 					current_index += 1
 				end					
 
 				rgb_attributes = {
 					totalCentiseconds: CENTISECONDS,
-					name: channel_name,
+					name: pixel_name,
 					savedIndex: current_index
 				}
-				rgb_channels = []
+				#rgb_channels = []
 				
 				current_index += 1
 
-				channels << {
-					pixel_channels: color_channels,
-					rgbChannel: { attributes: rgb_attributes, channels: rgb_channels }
+				pixels << {
+					colors: colors,
+					rgbChannel: { attributes: rgb_attributes, color_indices: color_indices }
 				}
 			end
 
@@ -200,6 +174,23 @@ class SequenceController < ApplicationController
 			<channel name="CCD 21 - CM" color="12615744" centiseconds="400" deviceType="LOR" unit="33" circuit="155" priority="67108864" savedIndex="204"/>
 			<channel name="CCD 21 - CS" color="12615744" centiseconds="400" deviceType="LOR" unit="33" circuit="156" priority="67108864" savedIndex="205"/>
 			<channel name="CCD 21 - CI" color="12615744" centiseconds="400" deviceType="LOR" unit="33" circuit="157" priority="67108864" savedIndex="206"/>
+=end
+
+			commands = []
+			['LR', 'MM', 'MS', 'ME', 'CM', 'CS', 'CI'].each do |command|
+				commands << {
+					attributes: {
+						name: "#{unit_name} - #{command}",
+						color: 12615744,
+						centiseconds: CENTISECONDS,
+						deviceType: 'LOR',
+						unit: unit_decimal
+					}
+				}
+				
+			end
+		
+=begin
 			<cosmicColorDevice totalCentiseconds="400" name="CCD 21" savedIndex="207">
 				<channelGroups>
 					<channelGroup savedIndex="3"/>
@@ -214,10 +205,17 @@ class SequenceController < ApplicationController
 				</channelGroups>
 			</cosmicColorDevice>
 =end
+			group_indices = []
+
+			devices << {
+				pixels: pixels,
+				commands: commands,
+				group_indices: group_indices
+			}
 		end
 
 		@sequence = {
-			channels: channels,
+			devices: devices,
 			timingGrids: [
 				timingGrid: {
 					saveID: '0',
