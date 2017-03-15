@@ -1,32 +1,37 @@
 !!! XML
 %sequence{saveFileVersion: 14, author: '', createdAt: DateTime.now.strftime('%-m/%e/%Y %I:%M:%S %p'), videoUsage: 2}
 	%channels
-		- @sequence[:devices].each_with_index do |device, index|
-			- device[:pixels].each do |pixel|
+		- @sequence[:units].each_with_index do |unit, index|
+			- unit[:pixels].each do |pixel|
 				-pixel[:colors].each do |color|
 					-if color[:effects]
 						%channel{ color[:attributes] }
 							-color[:effects].each do |effect|
-								%effect{ effect[:attributes] }				
+								%effect{ effect[:attributes] }/
 					-else
 						%channel{ color[:attributes] }/
 				%rgbChannel{ pixel[:rgbChannel][:attributes] }
 					%channels
 						- pixel[:rgbChannel][:color_indices].each do |color_index|
-							%channel{ savedIndex: color_index}
-			- device[:commands].each do |command|
-				%channel{ command[:attributes] }
-			%channelGroups
-				- device[:group_indices].each do |group_index|
-					%channelGroup{ savedIndex: group_index }
+							%channel{ savedIndex: color_index}/
+			- unit[:commands].each do |command|
+				%channel{ command[:attributes] }/
+			%cosmicColorDevice{ unit[:attributes] }
+				%channelGroups
+					- unit[:group_indices].each do |group_index|
+						%channelGroup{ savedIndex: group_index }/
 
 	%timingGrids
-		%timingGrid
+		- @sequence[:timingGrids].each do |timing_grid|
+			%timingGrid{ timing_grid[:attributes] }/
+
 	%tracks
-		%track{totalCentiseconds: CENTISECONDS, timingGrid: 0}
+		%track{ @sequence[:track][:attributes] }
 			%channels
-				%channel
+				- @sequence[:track][:unit_indicies].each do |unit_index|
+					%channel{ savedIndex: unit_index }/
 			%loopLevels
-				%loopLevel
-	%animation{rows: 40, columns: '60', image: ''}/
+				%loopLevel/
+
+	%animation{ @sequence[:animation][:attributes] }/
 		

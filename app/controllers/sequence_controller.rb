@@ -96,12 +96,15 @@ class SequenceController < ApplicationController
 	def index
 		current_index = 0
 
-		devices = []
+		units = []
+		unit_indicies = []
 		CCRS.each do |ccr|
 			device = {}
 
 			unit_decimal = ccr[:unit].to_s.to_i(16) # convert from hex to decimal
 			unit_name = "CCR #{ccr[:unit]}"
+
+			group_indices = []
 
 			pixels = []
 			(1..50).each do |pixel_index|
@@ -156,8 +159,8 @@ class SequenceController < ApplicationController
 					name: pixel_name,
 					savedIndex: current_index
 				}
-				#rgb_channels = []
-				
+				group_indices << current_index
+
 				current_index += 1
 
 				pixels << {
@@ -165,16 +168,6 @@ class SequenceController < ApplicationController
 					rgbChannel: { attributes: rgb_attributes, color_indices: color_indices }
 				}
 			end
-
-=begin
-			<channel name="CCD 21 - LR" color="12615744" centiseconds="400" deviceType="LOR" unit="33" circuit="151" priority="67108864" savedIndex="200"/>
-			<channel name="CCD 21 - MM" color="12615744" centiseconds="400" deviceType="LOR" unit="33" circuit="152" priority="67108864" savedIndex="201"/>
-			<channel name="CCD 21 - MS" color="12615744" centiseconds="400" deviceType="LOR" unit="33" circuit="153" priority="67108864" savedIndex="202"/>
-			<channel name="CCD 21 - ME" color="12615744" centiseconds="400" deviceType="LOR" unit="33" circuit="154" priority="67108864" savedIndex="203"/>
-			<channel name="CCD 21 - CM" color="12615744" centiseconds="400" deviceType="LOR" unit="33" circuit="155" priority="67108864" savedIndex="204"/>
-			<channel name="CCD 21 - CS" color="12615744" centiseconds="400" deviceType="LOR" unit="33" circuit="156" priority="67108864" savedIndex="205"/>
-			<channel name="CCD 21 - CI" color="12615744" centiseconds="400" deviceType="LOR" unit="33" circuit="157" priority="67108864" savedIndex="206"/>
-=end
 
 			commands = []
 			['LR', 'MM', 'MS', 'ME', 'CM', 'CS', 'CI'].each do |command|
@@ -184,57 +177,72 @@ class SequenceController < ApplicationController
 						color: 12615744,
 						centiseconds: CENTISECONDS,
 						deviceType: 'LOR',
-						unit: unit_decimal
+						unit: unit_decimal,
+						circuit: 0,
+						priority: 67108864,
+						savedIndex: current_index
 					}
 				}
-				
-			end
-		
-=begin
-			<cosmicColorDevice totalCentiseconds="400" name="CCD 21" savedIndex="207">
-				<channelGroups>
-					<channelGroup savedIndex="3"/>
-					<channelGroup savedIndex="7"/>
-					<channelGroup savedIndex="200"/>
-					<channelGroup savedIndex="201"/>
-					<channelGroup savedIndex="202"/>
-					<channelGroup savedIndex="203"/>
-					<channelGroup savedIndex="204"/>
-					<channelGroup savedIndex="205"/>
-					<channelGroup savedIndex="206"/>
-				</channelGroups>
-			</cosmicColorDevice>
-=end
-			group_indices = []
+				group_indices << current_index
 
-			devices << {
+				current_index += 1
+			end
+
+
+			unit_attributes = {totalCentiseconds: CENTISECONDS, name: unit_name, savedIndex: current_index}
+			units << {
+				attributes: unit_attributes,
 				pixels: pixels,
 				commands: commands,
 				group_indices: group_indices
 			}
+			unit_indicies << current_index
+
+			current_index += 1
 		end
 
-		@sequence = {
-			devices: devices,
-			timingGrids: [
-				timingGrid: {
-					saveID: '0',
+		timing_grids = [
+			{
+				attributes: {
+					saveID: 0,
 					name: 'Fixed Grid: 0.10',
 					type: 'fixed',
-					spacing: '10'
+					spacing: 10
 				}
-			],
-			tracks: []
+			}
+		]
+
+		track = {
+			attributes: {
+				totalCentiseconds: CENTISECONDS,
+				timingGrid: timing_grids.first[:attributes][:saveID]
+			},
+			unit_indicies: unit_indicies
 		}
 
-		
+		animation = {
+			attributes: {
+				rows: 40,
+				columns: '60',
+				image: ''
+			}
+		}
+
+		@sequence = {
+			units: units,
+			timingGrids: timing_grids,
+			track: track,
+			animation: animation
+		}
+
+
 		respond_to do |format|
 			format.xml { 
 				headers['Content-Type'] = 'application/xml'
 			}
 			format.html {}
 		end
-		
+
 	end
 
 end
