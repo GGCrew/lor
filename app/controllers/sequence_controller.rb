@@ -25,6 +25,7 @@ class SequenceController < ApplicationController
 		{ name: 'blue',  initial: 'B', value: 16711680 }
 	]
 
+	INTENSITYVALUES = [1, 30, 50, 70, 100]
 
 =begin
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -134,17 +135,31 @@ class SequenceController < ApplicationController
 					else
 						if color_index == 1 # green
 							effects = []
+							intensities = [ INTENSITYVALUES.sample ]
 							(0..(CENTISECONDS - CENTISECONDINTERVAL)).step(CENTISECONDINTERVAL) do |centisecond|
-								# TODO: generate random intensity values
+								# generate random intensity values
+								start_intensity = intensities.last
+								end_intensity = INTENSITYVALUES.sample
+								begin
+									end_intensity = INTENSITYVALUES.sample
+								end while end_intensity == start_intensity # prevent sequential duplicates
+
+								if centisecond == (CENTISECONDS - CENTISECONDINTERVAL)
+									# TODO: compare final intensity with start intensity to prevent sequential loop-around duplication
+									end_intensity = intensities.first
+								end
+
 								effects << {
 									attributes: {
 										type: 'intensity',
 										startCentisecond: centisecond,
 										endCentisecond: (centisecond + CENTISECONDINTERVAL),
-										startIntensity: 1,
-										endIntensity: 50
+										startIntensity: start_intensity,
+										endIntensity: end_intensity
 									}
 								}
+
+								intensities << end_intensity
 							end
 						else
 							effects = nil
