@@ -25,7 +25,6 @@ class SequenceController < ApplicationController
 		{ name: 'blue',  initial: 'B', value: 16711680 }
 	]
 
-	INTENSITYVALUES = [1, 30, 50, 70, 100]
 
 =begin
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -104,7 +103,7 @@ class SequenceController < ApplicationController
 			group_indices = []
 			current_ciruit = 1
 
-			unit_decimal = ccr[:unit].to_s.to_i(16) # convert from hex to decimal
+			unit_decimal = ccr[:unit].to_i(16) # convert from hex to decimal
 			unit_name = "CCR #{ccr[:unit]}"
 
 			pixels = []
@@ -135,13 +134,22 @@ class SequenceController < ApplicationController
 					else
 						if color_index == 1 # green
 							effects = []
-							intensities = [ INTENSITYVALUES.sample ]
+							intensity_values = [1, 30, 50, 70, 100]
+
+							if ccr[:unit] == '01' && pixel_index == 50
+								# Reduce available options for single-pixel section
+								# to avoid extreme variations
+								intensity_values.delete(intensity_values.min)
+								intensity_values.delete(intensity_values.max)
+							end
+
+							intensities = [ intensity_values.sample ]
 							(0..(CENTISECONDS - CENTISECONDINTERVAL)).step(CENTISECONDINTERVAL) do |centisecond|
 								# generate random intensity values
 								start_intensity = intensities.last
-								end_intensity = INTENSITYVALUES.sample
+								end_intensity = intensity_values.sample
 								begin
-									end_intensity = INTENSITYVALUES.sample
+									end_intensity = intensity_values.sample
 								end while end_intensity == start_intensity # prevent sequential duplicates
 
 								if centisecond == (CENTISECONDS - CENTISECONDINTERVAL)
@@ -165,6 +173,8 @@ class SequenceController < ApplicationController
 							effects = nil
 						end
 					end
+
+					#(effects = nil) unless (ccr[:unit] == '01' && pixel_index == 50)
 
 					colors << { attributes: attributes, effects: effects }
 
@@ -195,13 +205,14 @@ class SequenceController < ApplicationController
 						centiseconds: CENTISECONDS,
 						deviceType: 'LOR',
 						unit: unit_decimal,
-						circuit: 0,
+						circuit: current_ciruit,
 						priority: 67108864,
 						savedIndex: current_index
 					}
 				}
 				group_indices << current_index
 
+				current_ciruit += 1
 				current_index += 1
 			end
 
