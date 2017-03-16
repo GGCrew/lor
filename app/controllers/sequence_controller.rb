@@ -118,14 +118,15 @@ class SequenceController < ApplicationController
 					color_indices << current_index
 
 					# RGB channels
-					attributes = {}
-					attributes.merge!({name: "#{pixel_name} (#{color[:initial]})"})
-					attributes.merge!({color: color[:value]})
-					attributes.merge!({centiseconds: CENTISECONDS})
-					attributes.merge!({deviceType: 'LOR'})
-					attributes.merge!({unit: unit_decimal})
-					attributes.merge!({circuit: current_ciruit})
-					attributes.merge!({savedIndex: current_index})
+					attributes = {
+						name: "#{pixel_name} (#{color[:initial]})",
+						color: color[:value],
+						centiseconds: CENTISECONDS,
+						deviceType: 'LOR',
+						unit: unit_decimal,
+						circuit: current_ciruit,
+						savedIndex: current_index
+					}
 					current_ciruit += 1
 
 					if ccr[:inactive].include?(pixel_index)
