@@ -100,11 +100,11 @@ class SequenceController < ApplicationController
 		unit_indicies = []
 		CCRS.each do |ccr|
 			device = {}
+			group_indices = []
+			current_ciruit = 1
 
 			unit_decimal = ccr[:unit].to_s.to_i(16) # convert from hex to decimal
 			unit_name = "CCR #{ccr[:unit]}"
-
-			group_indices = []
 
 			pixels = []
 			(1..50).each do |pixel_index|
@@ -124,8 +124,9 @@ class SequenceController < ApplicationController
 					attributes.merge!({centiseconds: CENTISECONDS})
 					attributes.merge!({deviceType: 'LOR'})
 					attributes.merge!({unit: unit_decimal})
-					attributes.merge!({circuit: (((pixel_index - 1) * 4) + color_index)})
+					attributes.merge!({circuit: current_ciruit})
 					attributes.merge!({savedIndex: current_index})
+					current_ciruit += 1
 
 					if ccr[:inactive].include?(pixel_index)
 						effects = nil
