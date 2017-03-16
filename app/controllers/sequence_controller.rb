@@ -134,14 +134,17 @@ class SequenceController < ApplicationController
 					else
 						if color_index == 1 # green
 							effects = []
-							intensity_values = [1, 30, 50, 70, 100]
+							#intensity_values = [10, 30, 50, 70, 100]
+							intensity_values = [30, 50, 70]
 
+=begin
 							if ccr[:unit] == '01' && pixel_index == 50
 								# Reduce available options for single-pixel section
 								# to avoid extreme variations
 								intensity_values.delete(intensity_values.min)
 								intensity_values.delete(intensity_values.max)
 							end
+=end
 
 							intensities = [ intensity_values.sample ]
 							(0..(CENTISECONDS - CENTISECONDINTERVAL)).step(CENTISECONDINTERVAL) do |centisecond|
