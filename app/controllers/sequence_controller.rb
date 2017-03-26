@@ -19,11 +19,11 @@ class SequenceController < ApplicationController
 		}
 	]
 
-	COLORS = [
-		{ name: 'red',   initial: 'R', value: 255 },
-		{ name: 'green', initial: 'G', value: 65280 },
-		{ name: 'blue',  initial: 'B', value: 16711680 }
-	]
+	CHANNELCOLORS = {
+		r: { name: 'red',   initial: 'R', value: 255 },
+		g: { name: 'green', initial: 'G', value: 65280 },
+		b: { name: 'blue',  initial: 'B', value: 16711680 }
+	}
 
 
 =begin
@@ -93,7 +93,7 @@ class SequenceController < ApplicationController
 =end
 
 
-	def index
+	def shimmer
 		current_index = 0
 
 		units = []
@@ -113,14 +113,14 @@ class SequenceController < ApplicationController
 				color_indices = []
 				colors = []
 				(0..2).each do |color_index|
-					#color = (2**(8*(color_index+1))) - (2**(8*color_index))
-					color = COLORS[color_index]
+					#channel_color = (2**(8*(color_index+1))) - (2**(8*color_index))
+					channel_color = CHANNELCOLORS[color_index]
 					color_indices << current_index
 
 					# RGB channels
 					attributes = {
-						name: "#{pixel_name} (#{color[:initial]})",
-						color: color[:value],
+						name: "#{pixel_name} (#{channel_color[:initial]})",
+						color: channel_color[:value],
 						centiseconds: CENTISECONDS,
 						deviceType: 'LOR',
 						unit: unit_decimal,
@@ -270,10 +270,173 @@ class SequenceController < ApplicationController
 		respond_to do |format|
 			format.xml { 
 				headers['Content-Type'] = 'application/xml'
+				render 'sequence'
 			}
-			format.html {}
+			format.html {
+				render 'sequence'
+			}
+		end
+	end
+
+
+	def solid
+		color = {
+			r: 0,
+			g: 0,
+			b: 10
+		}
+
+		current_index = 0
+
+		units = []
+		unit_indicies = []
+		CCRS.each do |ccr|
+			device = {}
+			group_indices = []
+			current_ciruit = 1
+
+			unit_decimal = ccr[:unit].to_i(16) # convert from hex to decimal
+			unit_name = "CCR #{ccr[:unit]}"
+
+			pixels = []
+			(1..50).each do |pixel_index|
+				pixel_name = "#{unit_name} p#{pixel_index}"
+
+				rgb_color_indices = []
+				pixel_colors = []
+				[:r, :g, :b].each do |rgb_color_symbol|
+					#channel_color = (2**(8*(color_index+1))) - (2**(8*color_index))
+					channel_color = CHANNELCOLORS[rgb_color_symbol]
+					rgb_color_indices << current_index
+
+					# RGB channels
+					attributes = {
+						name: "#{pixel_name} (#{channel_color[:initial]})",
+						color: channel_color[:value],
+						centiseconds: CENTISECONDS,
+						deviceType: 'LOR',
+						unit: unit_decimal,
+						circuit: current_ciruit,
+						savedIndex: current_index
+					}
+					current_ciruit += 1
+
+					if ccr[:inactive].include?(pixel_index)
+						effects = nil
+					else
+						unless color[rgb_color_symbol] == 0
+							effects = []
+							
+							effects << {
+								attributes: {
+									type: 'intensity',
+									startCentisecond: 0,
+									endCentisecond: CENTISECONDS,
+									intensity: color[rgb_color_symbol],
+								}
+							}
+						else
+							effects = nil
+						end
+					end
+
+					pixel_colors << { attributes: attributes, effects: effects }
+
+					current_index += 1
+				end					
+
+				rgb_attributes = {
+					totalCentiseconds: CENTISECONDS,
+					name: pixel_name,
+					savedIndex: current_index
+				}
+				group_indices << current_index
+
+				current_index += 1
+
+				pixels << {
+					colors: pixel_colors,
+					rgbChannel: { attributes: rgb_attributes, color_indices: rgb_color_indices }
+				}
+			end
+
+			commands = []
+			['LR', 'MM', 'MS', 'ME', 'CM', 'CS', 'CI'].each do |command|
+				commands << {
+					attributes: {
+						name: "#{unit_name} - #{command}",
+						color: 12615744,
+						centiseconds: CENTISECONDS,
+						deviceType: 'LOR',
+						unit: unit_decimal,
+						circuit: current_ciruit,
+						priority: 67108864,
+						savedIndex: current_index
+					}
+				}
+				group_indices << current_index
+
+				current_ciruit += 1
+				current_index += 1
+			end
+
+
+			unit_attributes = {totalCentiseconds: CENTISECONDS, name: unit_name, savedIndex: current_index}
+			units << {
+				attributes: unit_attributes,
+				pixels: pixels,
+				commands: commands,
+				group_indices: group_indices
+			}
+			unit_indicies << current_index
+
+			current_index += 1
 		end
 
+		timing_grids = [
+			{
+				attributes: {
+					saveID: 0,
+					name: 'Fixed Grid: 0.10',
+					type: 'fixed',
+					spacing: 10
+				}
+			}
+		]
+
+		track = {
+			attributes: {
+				totalCentiseconds: CENTISECONDS,
+				timingGrid: timing_grids.first[:attributes][:saveID]
+			},
+			unit_indicies: unit_indicies
+		}
+
+		animation = {
+			attributes: {
+				rows: 40,
+				columns: '60',
+				image: ''
+			}
+		}
+
+		@sequence = {
+			units: units,
+			timingGrids: timing_grids,
+			track: track,
+			animation: animation
+		}
+
+
+		respond_to do |format|
+			format.xml { 
+				headers['Content-Type'] = 'application/xml'
+				render 'sequence'
+			}
+			format.html {
+				render 'sequence'
+			}
+		end
 	end
 
 end
